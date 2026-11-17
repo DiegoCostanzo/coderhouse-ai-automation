@@ -1,0 +1,375 @@
+{
+  "name": "Checkpoint 1 - Agente Leads Viajes",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "streaming"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -224,
+        -48
+      ],
+      "id": "92f0098b-96b0-4db8-9d99-dfe7f4a1c5b2",
+      "name": "When chat message received",
+      "webhookId": "5aba8184-b33b-47cf-9364-6f8ec2f2decc"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": " # ROL\n  Sos el Asistente de Calificación de Leads de una agencia de viajes. Tu función es conversar con personas interesadas en viajar, relevar los datos de su consulta y registrarlos de forma ordenada para el equipo comercial.\n\n  # ÁMBITO\n  Podés:\n  - Conversar con el cliente para entender qué viaje busca.\n  - Pedir los datos que falten, de a uno o dos por mensaje.\n  - Buscar si el cliente ya está registrado y registrar el lead en la planilla de leads.\n\n  No podés:\n  - Dar precios, cotizaciones, tarifas ni presupuestos.\n  - Confirmar disponibilidad, reservas, vuelos ni hoteles.\n  - Aplicar descuentos, promociones ni condiciones especiales.\n  - Gestionar pagos, reembolsos, cancelaciones ni reclamos.\n  - Inventar información sobre destinos, requisitos migratorios o servicios de la agencia.\n  - Hablar de temas ajenos a viajes y a la agencia.\n\n  # OBJETIVO\n  Convertir cada conversación en un registro de lead completo y limpio, con calificación de prioridad, para que el equipo comercial pueda contactar al cliente sin volver a preguntarle nada.\n\n  Datos a relevar:\n1. Nombre y apellido (obligatorio)\n2. Email o teléfono (al menos uno es obligatorio)\n3. Destino o tipo de destino (obligatorio)\n4. Fecha aproximada del viaje\n5. Cantidad de pasajeros\n6. Presupuesto aproximado por persona\n7. Tipo de viaje (playa, aventura, ciudad, luna de miel, familiar, corporativo, otro)\n\nCalificación del lead:\n- CALIENTE: tiene destino, fecha dentro de los próximos 3 meses y presupuesto definido.\n- TIBIO: tiene destino, pero la fecha o el presupuesto son inciertos.\n- FRÍO: solo está explorando ideas, sin fecha ni presupuesto.\n\n# REGLAS DE USO DE HERRAMIENTAS\nTenés dos herramientas: Buscar_Lead y Registrar_Lead.\n- Paso obligatorio: antes de usar Registrar_Lead, usá siempre Buscar_Lead con el email del cliente. Nunca llames a Registrar_Lead sin haber llamado antes a Buscar_Lead en la misma conversación.\n- Si Buscar_Lead devuelve una o más filas, el cliente ya está registrado: no uses Registrar_Lead y avisale que su consulta ya está en manos del equipo.\n- Si Buscar_Lead no devuelve filas, el cliente es nuevo: usá Registrar_Lead.\n- Si el cliente solo informó teléfono y no email, no uses Buscar_Lead y registrá directamente con Registrar_Lead.\n- Usá Registrar_Lead solo cuando tengas, como mínimo, nombre, un dato de contacto y destino. Nunca registres un lead con datos inventados ni supuestos.\n- Registrá cada lead una sola vez por conversación.\n- Si una herramienta devuelve error, no la reintentes más de una vez. Informale al cliente que su consulta será revisada por una persona del equipo.\n- No uses herramientas para saludar, conversar ni responder preguntas generales.\n\n# ESCALAMIENTO\nDetené el relevamiento y respondé exactamente \"Transfiriendo tu caso a revisión humana. Un asesor de la agencia se va a comunicar con vos a la brevedad.\" cuando el cliente:\n- Pida una cotización, un precio o un presupuesto personalizado.\n- Pida un reembolso, una cancelación o haga un reclamo.\n- Pida confirmar una reserva o un pago.\n- Se muestre molesto o pida hablar con una persona.\nSi ya tenés los datos mínimos, registrá el lead antes de escalar y anotá el motivo en el campo de notas.\n\n# ESTILO\n- Español rioplatense, cordial y profesional, con frases breves.\n- Usá lenguaje neutro tradicional. No uses lenguaje inclusivo (no uses \"todos/as\", \"todes\", \"les\", \"x\" ni \"@\").\n- Al cerrar, resumí los datos registrados y la calificación asignada.",
+          "maxIterations": 7,
+          "returnIntermediateSteps": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        0,
+        -48
+      ],
+      "id": "ae9c9469-9ea6-4f20-95a2-2804e68763d7",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        208
+      ],
+      "id": "90b3678a-40c8-4cb3-9217-0668dd37c63b",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XcK5D11RIVya94wj",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        64,
+        224
+      ],
+      "id": "a582c29f-2420-4071-b133-95da8bb99639",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Registra un nuevo lead de viaje en la planilla comercial de la agencia. Usá esta herramienta únicamente cuando ya obtuviste del cliente, como mínimo, su nombre y apellido, al menos un dato de contacto (email o teléfono) y el destino o tipo de destino que le interesa. Completá también fecha aproximada, cantidad de pasajeros, presupuesto, tipo de viaje, calificación (CALIENTE, TIBIO o FRIO) y notas si están disponibles; dejá vacío lo que el cliente no haya informado, nunca inventes datos. Usala una sola vez por conversación y solo después de verificar que el cliente no esté registrado. También usala antes de escalar a revisión humana si ya contás con los datos mínimos, indicando el motivo del escalamiento en Notas. No la uses para saludar, responder preguntas generales, dar precios ni para consultas que no sean un interés concreto de viaje.",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1xrOjEbxSRH9ICe6oTu9FbrXqCtzaNE8oPxKnbbvwV_8",
+          "mode": "list",
+          "cachedResultName": "Leads Agencia Viajes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xrOjEbxSRH9ICe6oTu9FbrXqCtzaNE8oPxKnbbvwV_8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xrOjEbxSRH9ICe6oTu9FbrXqCtzaNE8oPxKnbbvwV_8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha_Registro": "={{ $now.toFormat('yyyy-MM-dd HH:mm') }}",
+            "Nombre": "={{ $fromAI('Nombre', 'Nombre y apellido del cliente', 'string') }}",
+            "Email": "={{ $fromAI('Email', 'Email del cliente; vacío si no lo dio', 'string') }}",
+            "Telefono": "={{ $fromAI('Telefono', 'Teléfono del cliente; vacío si no lo dio', 'string') }}",
+            "Destino": "={{ $fromAI('Destino', 'Destino o tipo de destino buscado', 'string') }}",
+            "Fecha_Viaje": "={{ $fromAI('Fecha_Viaje', 'Fecha o período aproximado del viaje', 'string') }}",
+            "Pasajeros": "={{ $fromAI('Pasajeros', 'Cantidad de pasajeros', 'string') }}",
+            "Presupuesto": "={{ $fromAI('Presupuesto', 'Presupuesto aproximado por persona con moneda', 'string') }}",
+            "Tipo_Viaje": "={{ $fromAI('Tipo_Viaje', 'playa, aventura, ciudad, luna de miel, familiar, corporativo u otro', 'string') }}",
+            "Calificacion": "={{ $fromAI('Calificacion', 'CALIENTE, TIBIO o FRIO según las reglas del system prompt', 'string') }}",
+            "Notas": "={{ $fromAI('Notas', 'Observaciones relevantes o motivo de escalamiento', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Fecha_Registro",
+              "displayName": "Fecha_Registro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Destino",
+              "displayName": "Destino",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fecha_Viaje",
+              "displayName": "Fecha_Viaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pasajeros",
+              "displayName": "Pasajeros",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Presupuesto",
+              "displayName": "Presupuesto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tipo_Viaje",
+              "displayName": "Tipo_Viaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Calificacion",
+              "displayName": "Calificacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notas",
+              "displayName": "Notas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        192
+      ],
+      "id": "a8dd8447-cd43-4853-a91b-61ccd1f4cdbd",
+      "name": "Registrar_Lead",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FdJ9VIZUPXgZekeM",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "tu_email@ejemplo.com",
+        "subject": "=[Agente Leads] Ejecución {{ $now.toFormat('yyyy-MM-dd HH:mm') }}",
+        "emailType": "text",
+        "message": "=REPORTE DE OBSERVABILIDAD – Agente de Calificación de Leads\n\nSession ID: {{ $('When chat message received').item.json.sessionId }}\n\nMENSAJE DEL CLIENTE:\n{{ $('When chat message received').item.json.chatInput }}\n\nRESPUESTA DEL AGENTE:\n{{ $json.output }}\n\nHERRAMIENTAS USADAS ({{ ($json.intermediateSteps || []).length }}):\n{{ ($json.intermediateSteps || []).map((s, i) => (i + 1) + '. ' + s.action.tool + '\\n   Entrada: ' + JSON.stringify(s.action.toolInput) + '\\n   Resultado: ' + (typeof s.observation === 'string' ? s.observation : JSON.stringify(s.observation)).slice(0, 500)).join('\\n\\n') || 'Ninguna (el agente respondió sin usar herramientas)' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        368,
+        -48
+      ],
+      "id": "80e2e568-aff1-43d5-9ffc-8c964d2a79c7",
+      "name": "Log_Gmail",
+      "webhookId": "ec0d1627-8b50-48a8-9066-03e7528ff4a5",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6kQzwXEuBktSlZhT",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Busca en la planilla comercial si un cliente ya está registrado como lead, usando su email. Usá esta herramienta siempre antes de registrar un lead nuevo, para evitar duplicados, pero solo si el cliente informó un email. Si devuelve una fila, el cliente ya existe: no lo registres de nuevo y avisale que su consulta ya está en manos del equipo. Si no devuelve resultados, el cliente es nuevo y podés registrarlo. No la uses para otro fin.",
+        "documentId": {
+          "__rl": true,
+          "value": "1xrOjEbxSRH9ICe6oTu9FbrXqCtzaNE8oPxKnbbvwV_8",
+          "mode": "list",
+          "cachedResultName": "Leads Agencia Viajes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xrOjEbxSRH9ICe6oTu9FbrXqCtzaNE8oPxKnbbvwV_8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xrOjEbxSRH9ICe6oTu9FbrXqCtzaNE8oPxKnbbvwV_8/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Email",
+              "lookupValue": "={{ $fromAI('Email', 'Email del cliente a buscar', 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        368,
+        176
+      ],
+      "id": "ec2e64a0-0418-4999-bfe5-9adf0377ecfd",
+      "name": "Buscar_Lead",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FdJ9VIZUPXgZekeM",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar_Lead": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Log_Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar_Lead": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2bc91f1c-df05-4f8a-b76b-1d0945b0a84e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a6bc2f3a716a86307e13e3b40119a111b477e52eca975b85bb74a8b3e1c13490"
+  },
+  "nodeGroups": [],
+  "id": "C6w4oYQVM6HmcE0A",
+  "tags": []
+}
