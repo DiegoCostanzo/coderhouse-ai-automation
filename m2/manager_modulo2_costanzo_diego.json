@@ -1,0 +1,1161 @@
+{
+  "name": "M2 - Manager Agente Leads Viajes",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "db5387ae-d12c-44dd-b7c0-3059e493d6c6",
+      "name": "When chat message received",
+      "webhookId": "468b59a9-2dce-4a22-94b3-d5b136c698ea"
+    },
+    {
+      "parameters": {
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "# ROL\nSos el Router de Triaje (Manager) del sistema de atención de una agencia de viajes. Tu única función es leer la conversación, clasificar la intención del último mensaje del cliente dentro de una taxonomía cerrada y extraer los datos del lead. No resolvés tareas: las resuelven los especialistas a los que el sistema deriva cada caso.\n\n# TAXONOMÍA CERRADA (en \"intent\" usá solo una de estas etiquetas)\n- NUEVO_LEAD: el cliente quiere viajar y, sumando todo lo dicho en la conversación, ya están los tres datos mínimos: nombre y apellido, un contacto (email o teléfono) y destino. Riesgo MEDIO.\n- DATOS_INCOMPLETOS: el cliente quiere viajar pero falta al menos un dato mínimo. Riesgo BAJO.\n- ESCALAR_HUMANO: pide precio, cotización o presupuesto personalizado; pide reserva, pago, reembolso o cancelación; hace un reclamo; se muestra molesto o pide hablar con una persona. Riesgo ALTO.\n- CONVERSACION: saludo, agradecimiento, despedida o pregunta general sobre cómo trabaja la agencia, sin datos nuevos de viaje. Usala también si en esta conversación ya clasificaste NUEVO_LEAD y el cliente no aporta un viaje distinto. Riesgo BAJO.\n- FUERA_DE_ALCANCE: temas ajenos a los viajes y a la agencia. Riesgo BAJO.\nSi dudás entre dos etiquetas, elegí la de mayor riesgo y bajá la confianza.\n\n# CONFIANZA\n\"confidence\" es un número entre 0 y 1 que indica qué tan seguro estás de la clasificación:\n- 0.85 o más: la intención es inequívoca.\n- Entre 0.50 y 0.84: probable, con alguna ambigüedad.\n- Menos de 0.50: no estás seguro.\n\n# EXTRACCIÓN\nEn \"lead\" completá los datos que el cliente haya dado en toda la conversación. Dejá \"\" lo que no haya informado. Nunca inventes datos.\n\n# RESPUESTA AL CLIENTE\nCompletá \"respuesta_cliente\" solo en estos casos:\n- DATOS_INCOMPLETOS: pedí los datos mínimos que faltan, de a uno o dos.\n- CONVERSACION: respondé breve y cordial, ofreciendo ayuda para planificar un viaje.\n- FUERA_DE_ALCANCE: declinà con amabilidad y aclarà que solo ayudás con consultas de viaje.\nEn NUEVO_LEAD y ESCALAR_HUMANO dejalo \"\" porque la respuesta la arma el especialista.\nNunca des precios, disponibilidad, reservas, descuentos ni información inventada.\n\n# MOTIVO\nEn \"motivo\" explicá en una frase por qué elegiste esa intención.\n\n# ESTILO\nEspañol rioplatense, cordial y breve. Lenguaje neutro tradicional, sin lenguaje inclusivo (no uses \"todos/as\", \"todes\", \"les\", \"x\" ni \"@\").\n\n# FORMATO\nRespondé únicamente con el objeto JSON pedido, sin texto adicional.",
+          "maxIterations": 5
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        240,
+        0
+      ],
+      "id": "42b51db9-1b9f-4741-9fba-9ec453c5422d",
+      "name": "Router_Triage",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        140,
+        240
+      ],
+      "id": "af4409b8-0641-4aaa-b118-4bfce5204b0d",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XcK5D11RIVya94wj",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        280,
+        260
+      ],
+      "id": "9ab48a2a-10e7-42ab-b866-45aca65f979b",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"intent\": \"NUEVO_LEAD\",\n  \"confidence\": 0.92,\n  \"riesgo\": \"MEDIO\",\n  \"motivo\": \"Quiere viajar y ya dio nombre, email y destino.\",\n  \"respuesta_cliente\": \"\",\n  \"lead\": {\n    \"nombre\": \"Martín Pérez\",\n    \"email\": \"martin.perez@mail.com\",\n    \"telefono\": \"\",\n    \"destino\": \"Cancún\",\n    \"fecha_viaje\": \"febrero\",\n    \"pasajeros\": \"2\",\n    \"presupuesto\": \"1500 USD por persona\",\n    \"tipo_viaje\": \"luna de miel\"\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        420,
+        240
+      ],
+      "id": "9d07548d-3bec-4d6a-a496-51e4c8f8c5b0",
+      "name": "Formato_Clasificacion"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "68aff66f-7c06-4dac-bcac-5f83b4456f85",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "ESCALAR_HUMANO"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Escalar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "fc67109d-d6f2-42b9-b804-319b9e564ea4",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "NUEVO_LEAD"
+                  },
+                  {
+                    "id": "ee851a92-fa18-406f-b009-36919ba75039",
+                    "leftValue": "={{ $json.output.confidence }}",
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    },
+                    "rightValue": 0.7
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Registrar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d96e7e0f-8d7b-4317-8144-e86d59bdd695",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "DATOS_INCOMPLETOS"
+                  },
+                  {
+                    "id": "c94ff9c0-eecd-402a-8a23-2bf103e8bbb0",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "CONVERSACION"
+                  },
+                  {
+                    "id": "3c3897e1-32fd-47e5-9b60-107590ee8e59",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "FUERA_DE_ALCANCE"
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "Responder"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Fallback_Humano"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        600,
+        -60
+      ],
+      "id": "a37811a8-52da-4e95-9231-f85fcf934ed0",
+      "name": "Switch_Intencion"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d6b130dc-f6eb-4d85-994f-560c42f68ffe",
+              "name": "session_id",
+              "value": "={{ $('When chat message received').item.json.sessionId }}",
+              "type": "string"
+            },
+            {
+              "id": "1c0ad58f-d1fe-429a-b4cc-48fc7af2679c",
+              "name": "intent",
+              "value": "={{ $json.output.intent }}",
+              "type": "string"
+            },
+            {
+              "id": "ba81d9c9-ba0e-4102-93c6-4552f1ee851d",
+              "name": "confidence",
+              "value": "={{ $json.output.confidence }}",
+              "type": "number"
+            },
+            {
+              "id": "95a0a6c3-2b4d-40bf-bb50-8fd0a7d4f1a4",
+              "name": "original_input",
+              "value": "={{ $('When chat message received').item.json.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "09d2f100-111e-4606-8a14-308a3b8d92de",
+              "name": "nombre",
+              "value": "={{ $json.output.lead.nombre ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "1e0252d1-f0d1-4759-a6cb-093c67828e87",
+              "name": "email",
+              "value": "={{ $json.output.lead.email ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "0777b80b-fa05-4251-a0e2-caba9d11e07f",
+              "name": "telefono",
+              "value": "={{ $json.output.lead.telefono ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "dff473f3-f7dd-4824-a522-592c3cd94ef0",
+              "name": "destino",
+              "value": "={{ $json.output.lead.destino ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "61ceef33-e5ba-435d-a182-4b07aecf11a4",
+              "name": "fecha_viaje",
+              "value": "={{ $json.output.lead.fecha_viaje ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "18889d5b-d5d2-4ef1-b5d9-de7fcc4b1f5f",
+              "name": "pasajeros",
+              "value": "={{ $json.output.lead.pasajeros ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "46c081aa-d9ea-4d74-b483-9a9727f934ca",
+              "name": "presupuesto",
+              "value": "={{ $json.output.lead.presupuesto ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "10bb9467-d89d-46ac-8b79-744e85a763ee",
+              "name": "tipo_viaje",
+              "value": "={{ $json.output.lead.tipo_viaje ?? '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        -60
+      ],
+      "id": "8074b1db-9793-4eab-9e3a-40384b0d641a",
+      "name": "Payload_Registro"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e5ce075f-8249-4b77-aff3-e52fced364b4",
+              "name": "session_id",
+              "value": "={{ $('When chat message received').item.json.sessionId }}",
+              "type": "string"
+            },
+            {
+              "id": "887ca9a0-08c4-4710-ab5d-09af22169f77",
+              "name": "intent",
+              "value": "={{ $json.output?.intent ?? 'ERROR_ROUTER' }}",
+              "type": "string"
+            },
+            {
+              "id": "8ec15d7b-8566-4902-a5de-54f0b9e56b3e",
+              "name": "confidence",
+              "value": "={{ $json.output?.confidence ?? 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "b79d4177-2e72-46ad-9ef5-a6eb29163d89",
+              "name": "riesgo",
+              "value": "={{ $json.output ? ($json.output.intent === 'ESCALAR_HUMANO' ? 'ALTO' : 'MEDIO') : 'ALTO' }}",
+              "type": "string"
+            },
+            {
+              "id": "81c52ed2-e898-43bc-b1e0-dc0ff35fdf9f",
+              "name": "motivo",
+              "value": "={{ !$json.output ? 'Falla técnica del router: no se pudo clasificar el mensaje.' : ($json.output.intent === 'ESCALAR_HUMANO' ? $json.output.motivo : 'Intención dudosa (' + $json.output.intent + ', confianza ' + $json.output.confidence + '). ' + $json.output.motivo) }}",
+              "type": "string"
+            },
+            {
+              "id": "4b6a9e9d-67c4-4405-a9fd-a36a9c51f4ff",
+              "name": "original_input",
+              "value": "={{ $('When chat message received').item.json.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "5a4882be-0708-466b-9459-ed9237f01064",
+              "name": "nombre",
+              "value": "={{ $json.output?.lead?.nombre ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "d030aa23-9692-4fc5-8367-eeb1411359f0",
+              "name": "email",
+              "value": "={{ $json.output?.lead?.email ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "24276fad-a1f2-4ddb-a682-36a4066fdebf",
+              "name": "telefono",
+              "value": "={{ $json.output?.lead?.telefono ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "e6032a51-e22b-4730-9630-7149ed2a4eff",
+              "name": "destino",
+              "value": "={{ $json.output?.lead?.destino ?? '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        -300
+      ],
+      "id": "2cc9ae4f-a62f-48a8-bcd6-9243c586fd29",
+      "name": "Payload_Escalamiento"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "A0q474Oza8YWQ55N",
+          "mode": "list",
+          "cachedResultName": "M2 - Worker_Registro_Lead",
+          "cachedResultUrl": "/workflow/A0q474Oza8YWQ55N"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $json.session_id }}",
+            "intent": "={{ $json.intent }}",
+            "confidence": "={{ $json.confidence }}",
+            "original_input": "={{ $json.original_input }}",
+            "nombre": "={{ $json.nombre }}",
+            "email": "={{ $json.email }}",
+            "telefono": "={{ $json.telefono }}",
+            "destino": "={{ $json.destino }}",
+            "fecha_viaje": "={{ $json.fecha_viaje }}",
+            "pasajeros": "={{ $json.pasajeros }}",
+            "presupuesto": "={{ $json.presupuesto }}",
+            "tipo_viaje": "={{ $json.tipo_viaje }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "intent",
+              "displayName": "intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "confidence",
+              "displayName": "confidence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "original_input",
+              "displayName": "original_input",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "destino",
+              "displayName": "destino",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "fecha_viaje",
+              "displayName": "fecha_viaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "pasajeros",
+              "displayName": "pasajeros",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "presupuesto",
+              "displayName": "presupuesto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "tipo_viaje",
+              "displayName": "tipo_viaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1100,
+        -60
+      ],
+      "id": "cc6997d1-0bf6-47d4-9ab1-c3d855bebb5e",
+      "name": "Ejecutar_Worker_Registro",
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "P5iGRri2oTkbHXmw",
+          "mode": "list",
+          "cachedResultName": "M2 - Worker_Escalamiento_Humano",
+          "cachedResultUrl": "/workflow/P5iGRri2oTkbHXmw"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $json.session_id }}",
+            "intent": "={{ $json.intent }}",
+            "confidence": "={{ $json.confidence }}",
+            "riesgo": "={{ $json.riesgo }}",
+            "motivo": "={{ $json.motivo }}",
+            "original_input": "={{ $json.original_input }}",
+            "nombre": "={{ $json.nombre }}",
+            "email": "={{ $json.email }}",
+            "telefono": "={{ $json.telefono }}",
+            "destino": "={{ $json.destino }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "intent",
+              "displayName": "intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "confidence",
+              "displayName": "confidence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "riesgo",
+              "displayName": "riesgo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "motivo",
+              "displayName": "motivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "original_input",
+              "displayName": "original_input",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "destino",
+              "displayName": "destino",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1100,
+        -300
+      ],
+      "id": "3627e9be-d9f4-4b1d-99f6-ce6251fae28b",
+      "name": "Ejecutar_Worker_Escalamiento",
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0b65a03e-9b6d-4f01-9258-f5a7039987d9",
+              "name": "worker",
+              "value": "Worker_Registro_Lead",
+              "type": "string"
+            },
+            {
+              "id": "4495dbd3-f557-44ca-90f3-e92b3e093af4",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "65cc3e47-d1e5-4af3-a1ec-8c2998bf0620",
+              "name": "output",
+              "value": "={{ $json.status === 'success' ? ($json.data.accion === 'DUPLICADO' ? 'Ya tenemos tu consulta registrada, ' + $json.data.nombre + '. El equipo comercial ya la tiene y se va a comunicar con vos a la brevedad.' : '¡Listo, ' + $json.data.nombre + '! Registramos tu consulta para viajar a ' + $json.data.destino + ' (prioridad ' + $json.data.calificacion + '). Un asesor de la agencia se va a comunicar con vos a la brevedad.') : ($json.data?.error_code === 'DATOS_INSUFICIENTES' ? 'Para registrar tu consulta me falta: ' + $json.data.faltantes.join(', ') + '. ¿Me lo pasás?' : 'Tuvimos un inconveniente técnico al registrar tu consulta. Una persona del equipo la va a revisar y se va a comunicar con vos.') }}",
+              "type": "string"
+            },
+            {
+              "id": "af9f6e55-eaef-4e31-9adc-c4d395f3922e",
+              "name": "payload_enviado",
+              "value": "={{ JSON.stringify($('Payload_Registro').item.json) }}",
+              "type": "string"
+            },
+            {
+              "id": "771bf416-f423-4c99-ba39-cf8db35048aa",
+              "name": "respuesta_worker",
+              "value": "={{ JSON.stringify($json) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        -60
+      ],
+      "id": "87fdaf7b-0995-426b-892d-cd918f572abe",
+      "name": "Resp_Registro"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "80ce5218-18a0-4050-93bf-837dd05036c8",
+              "name": "worker",
+              "value": "Worker_Escalamiento_Humano",
+              "type": "string"
+            },
+            {
+              "id": "b0da5160-c535-4c78-81ab-64921cfbdff8",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "85e1f18a-4f5a-4814-8c2c-503a5323047f",
+              "name": "output",
+              "value": "={{ $json.status === 'success' ? 'Transfiriendo tu caso a revisión humana. Un asesor de la agencia se va a comunicar con vos a la brevedad.' : 'Tu consulta necesita revisión humana, pero en este momento no pudimos derivarla. Por favor, volvé a escribirnos en unos minutos.' }}",
+              "type": "string"
+            },
+            {
+              "id": "42591666-cda7-423b-a246-77515400ee23",
+              "name": "payload_enviado",
+              "value": "={{ JSON.stringify($('Payload_Escalamiento').item.json) }}",
+              "type": "string"
+            },
+            {
+              "id": "344e1700-6bd2-447d-ada6-e60186fa195e",
+              "name": "respuesta_worker",
+              "value": "={{ JSON.stringify($json) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        -300
+      ],
+      "id": "32d37c22-507c-4b23-a427-eb9e80b5fc71",
+      "name": "Resp_Escalamiento"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1909f08-cac2-41c3-8165-a61341789144",
+              "name": "worker",
+              "value": "ninguno (respuesta del Router)",
+              "type": "string"
+            },
+            {
+              "id": "7989c6e0-07e3-42d9-92ed-6d7bab8b2d72",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "a578443f-fbbd-4556-8de0-0697fc8867e4",
+              "name": "output",
+              "value": "={{ $json.output.respuesta_cliente }}",
+              "type": "string"
+            },
+            {
+              "id": "3e3aa0f8-3006-4a0e-89ae-7ecf2a0363da",
+              "name": "payload_enviado",
+              "value": "-",
+              "type": "string"
+            },
+            {
+              "id": "e5832ca9-701d-4fa0-a57e-dd388f37244b",
+              "name": "respuesta_worker",
+              "value": "-",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        160
+      ],
+      "id": "09d0b1de-c934-4bb1-ab3f-b697f7384c5a",
+      "name": "Resp_Directa"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "225e89bb-f3d1-4715-8fe1-8a6b07666d17",
+              "name": "worker",
+              "value": "Worker caído (timeout o error no controlado)",
+              "type": "string"
+            },
+            {
+              "id": "1234507e-34ed-4faa-875e-b8fbeb0ab177",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "98fa1a85-e171-4700-b267-6f0e5b713169",
+              "name": "output",
+              "value": "Tuvimos un inconveniente técnico. Una persona del equipo va a revisar tu consulta y se va a comunicar con vos.",
+              "type": "string"
+            },
+            {
+              "id": "52adcad0-46d0-49ec-b8d2-861342a9ee87",
+              "name": "payload_enviado",
+              "value": "-",
+              "type": "string"
+            },
+            {
+              "id": "d4d1e52b-5dbb-4a55-9a30-5336e045a12b",
+              "name": "respuesta_worker",
+              "value": "={{ String($json.error?.message ?? $json.error ?? 'Sin detalle') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        360
+      ],
+      "id": "5a06eb9f-12a4-416c-8bee-0ae188e0970e",
+      "name": "Fallback_Worker_Caido"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        0
+      ],
+      "id": "364dfe9a-b1c5-47d8-94a9-18939d192c23",
+      "name": "Consolidar_Respuesta"
+    },
+    {
+      "parameters": {
+        "sendTo": "tu_email@ejemplo.com",
+        "subject": "=[Manager M2] {{ $('Router_Triage').item.json.output?.intent ?? 'ERROR_ROUTER' }} → {{ $json.worker }} ({{ $json.status }})",
+        "emailType": "text",
+        "message": "=TRAZABILIDAD – Manager multi-agente (M2)\n\nSession ID: {{ $('When chat message received').item.json.sessionId }}\nMensaje del cliente: {{ $('When chat message received').item.json.chatInput }}\n\nROUTER\n- Intención: {{ $('Router_Triage').item.json.output?.intent ?? 'ERROR_ROUTER' }}\n- Confianza: {{ $('Router_Triage').item.json.output?.confidence ?? '-' }}\n- Riesgo: {{ $('Router_Triage').item.json.output?.riesgo ?? '-' }}\n- Motivo: {{ $('Router_Triage').item.json.output?.motivo ?? '-' }}\n\nWORKER INVOCADO: {{ $json.worker }}\nEstado: {{ $json.status }}\nParámetros enviados: {{ $json.payload_enviado }}\nRespuesta del worker: {{ $json.respuesta_worker }}\n\nRESPUESTA AL CLIENTE:\n{{ $json.output }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1820,
+        0
+      ],
+      "id": "f7f3df49-72ac-465f-9384-fd8fdf14134e",
+      "name": "Log_Trazabilidad",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6kQzwXEuBktSlZhT",
+          "name": "Gmail account"
+        }
+      },
+      "webhookId": "4ab8227d-bfb1-4c66-97f5-581039ad0d8a",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "92f018c5-6529-49c1-880e-11d6bf637fec",
+              "name": "output",
+              "value": "={{ $('Consolidar_Respuesta').item.json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2040,
+        0
+      ],
+      "id": "60d04116-3af2-48be-813d-03c5616a470d",
+      "name": "Salida_Chat"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Router_Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Router_Triage",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Router_Triage",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formato_Clasificacion": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Router_Triage",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router_Triage": {
+      "main": [
+        [
+          {
+            "node": "Switch_Intencion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Payload_Escalamiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch_Intencion": {
+      "main": [
+        [
+          {
+            "node": "Payload_Escalamiento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Payload_Registro",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resp_Directa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Payload_Escalamiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payload_Registro": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar_Worker_Registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payload_Escalamiento": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar_Worker_Escalamiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar_Worker_Registro": {
+      "main": [
+        [
+          {
+            "node": "Resp_Registro",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback_Worker_Caido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar_Worker_Escalamiento": {
+      "main": [
+        [
+          {
+            "node": "Resp_Escalamiento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback_Worker_Caido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resp_Registro": {
+      "main": [
+        [
+          {
+            "node": "Consolidar_Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resp_Escalamiento": {
+      "main": [
+        [
+          {
+            "node": "Consolidar_Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resp_Directa": {
+      "main": [
+        [
+          {
+            "node": "Consolidar_Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback_Worker_Caido": {
+      "main": [
+        [
+          {
+            "node": "Consolidar_Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar_Respuesta": {
+      "main": [
+        [
+          {
+            "node": "Log_Trazabilidad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log_Trazabilidad": {
+      "main": [
+        [
+          {
+            "node": "Salida_Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 180,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": []
+}

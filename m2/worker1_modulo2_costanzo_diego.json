@@ -1,0 +1,668 @@
+{
+  "name": "M2 - Worker_Registro_Lead",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "intent"
+            },
+            {
+              "name": "confidence",
+              "type": "number"
+            },
+            {
+              "name": "original_input"
+            },
+            {
+              "name": "nombre"
+            },
+            {
+              "name": "email"
+            },
+            {
+              "name": "telefono"
+            },
+            {
+              "name": "destino"
+            },
+            {
+              "name": "fecha_viaje"
+            },
+            {
+              "name": "pasajeros"
+            },
+            {
+              "name": "presupuesto"
+            },
+            {
+              "name": "tipo_viaje"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "990016c3-deed-40e2-a642-44236f954e1f",
+      "name": "Entrada_Worker_Registro"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e2ac08e2-330a-45e0-9789-f84db454fe68",
+              "leftValue": "={{ !!$json.nombre && (!!$json.email || !!$json.telefono) && !!$json.destino }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "440ff190-3d0f-46f4-a42f-da0826150a96",
+      "name": "Validar_Datos_Minimos"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9591efa3-92ab-4614-afa1-b5ff8077c0f8",
+              "name": "calificacion",
+              "value": "={{ ($json.fecha_viaje && $json.presupuesto) ? 'CALIENTE' : (($json.fecha_viaje || $json.presupuesto) ? 'TIBIO' : 'FRIO') }}",
+              "type": "string"
+            },
+            {
+              "id": "ed632645-2fc9-472d-babf-2c320230ef31",
+              "name": "fecha_registro",
+              "value": "={{ $now.toFormat('yyyy-MM-dd HH:mm') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {},
+        "includeOtherFields": true
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        440,
+        -100
+      ],
+      "id": "8c072b6b-9859-4bce-9e8d-b0b690aa64bb",
+      "name": "Calificar_Lead"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1xrOjEbxSRH9ICe6oTu9FbrXqCtzaNE8oPxKnbbvwV_8",
+          "mode": "list",
+          "cachedResultName": "Leads Agencia Viajes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xrOjEbxSRH9ICe6oTu9FbrXqCtzaNE8oPxKnbbvwV_8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xrOjEbxSRH9ICe6oTu9FbrXqCtzaNE8oPxKnbbvwV_8/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "={{ $json.email ? 'Email' : 'Telefono' }}",
+              "lookupValue": "={{ $json.email || $json.telefono }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        660,
+        -100
+      ],
+      "id": "75cea269-df28-4e3b-89b2-611979b7f82d",
+      "name": "Buscar_Duplicado",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FdJ9VIZUPXgZekeM",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c4e66051-d7e8-46bd-88b8-55fb47e8cd1e",
+                    "leftValue": "={{ $json.error }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "rightValue": ""
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Error"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "10b621d5-09ab-444d-8d60-28dda4949f57",
+                    "leftValue": "={{ $json.row_number }}",
+                    "operator": {
+                      "type": "number",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "rightValue": ""
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Existe"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Nuevo"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        900,
+        -100
+      ],
+      "id": "86c5ea94-e4d5-40f9-9998-dc1203098dd9",
+      "name": "Resultado_Busqueda",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1xrOjEbxSRH9ICe6oTu9FbrXqCtzaNE8oPxKnbbvwV_8",
+          "mode": "list",
+          "cachedResultName": "Leads Agencia Viajes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xrOjEbxSRH9ICe6oTu9FbrXqCtzaNE8oPxKnbbvwV_8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xrOjEbxSRH9ICe6oTu9FbrXqCtzaNE8oPxKnbbvwV_8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha_Registro": "={{ $('Calificar_Lead').item.json.fecha_registro }}",
+            "Nombre": "={{ $('Calificar_Lead').item.json.nombre }}",
+            "Email": "={{ $('Calificar_Lead').item.json.email }}",
+            "Telefono": "={{ $('Calificar_Lead').item.json.telefono }}",
+            "Destino": "={{ $('Calificar_Lead').item.json.destino }}",
+            "Fecha_Viaje": "={{ $('Calificar_Lead').item.json.fecha_viaje }}",
+            "Pasajeros": "={{ $('Calificar_Lead').item.json.pasajeros }}",
+            "Presupuesto": "={{ $('Calificar_Lead').item.json.presupuesto }}",
+            "Tipo_Viaje": "={{ $('Calificar_Lead').item.json.tipo_viaje }}",
+            "Calificacion": "={{ $('Calificar_Lead').item.json.calificacion }}",
+            "Notas": "={{ 'Registrado por Worker_Registro_Lead · session ' + $('Calificar_Lead').item.json.session_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Fecha_Registro",
+              "displayName": "Fecha_Registro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Destino",
+              "displayName": "Destino",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fecha_Viaje",
+              "displayName": "Fecha_Viaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Pasajeros",
+              "displayName": "Pasajeros",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Presupuesto",
+              "displayName": "Presupuesto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tipo_Viaje",
+              "displayName": "Tipo_Viaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Calificacion",
+              "displayName": "Calificacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notas",
+              "displayName": "Notas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1120,
+        -100
+      ],
+      "id": "6990efef-659b-416f-950d-bff7bbf2ad39",
+      "name": "Registrar_Lead",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FdJ9VIZUPXgZekeM",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6c1b2d0d-3172-4dc6-b595-5de46a1114fd",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "d262e7b2-9726-4ab6-895b-9a5b8a92eef7",
+              "name": "worker",
+              "value": "registro_lead",
+              "type": "string"
+            },
+            {
+              "id": "920108f4-d461-42a1-b25c-8a465f7a0eea",
+              "name": "message",
+              "value": "El lead ya estaba registrado; no se duplicó.",
+              "type": "string"
+            },
+            {
+              "id": "12149dad-3dd0-481f-a59e-124914e412b5",
+              "name": "data",
+              "value": "={{ { accion: 'DUPLICADO', calificacion: $('Calificar_Lead').item.json.calificacion, nombre: $('Calificar_Lead').item.json.nombre, destino: $('Calificar_Lead').item.json.destino } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        -320
+      ],
+      "id": "0d00962d-7b80-479e-850f-7dd688fb6a21",
+      "name": "Salida_Duplicado"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1c4f0ec2-a042-40ff-b8a1-21185f445746",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "f2b49115-4b05-40e9-95bc-0b6192c9a07d",
+              "name": "worker",
+              "value": "registro_lead",
+              "type": "string"
+            },
+            {
+              "id": "f8825bdd-4189-4177-b09e-1b3c291b5a71",
+              "name": "message",
+              "value": "Lead registrado en la planilla comercial.",
+              "type": "string"
+            },
+            {
+              "id": "390e982c-de1d-418c-94ad-71fa33c67e2a",
+              "name": "data",
+              "value": "={{ { accion: 'REGISTRADO', calificacion: $('Calificar_Lead').item.json.calificacion, nombre: $('Calificar_Lead').item.json.nombre, destino: $('Calificar_Lead').item.json.destino } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        -200
+      ],
+      "id": "56ab554a-834f-4672-98eb-1b6bc75511a2",
+      "name": "Salida_Exito"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9d70bad9-788a-4383-881b-ad229f1c0b5e",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "474d611e-cd9a-4ec4-be74-80dce07b58b1",
+              "name": "worker",
+              "value": "registro_lead",
+              "type": "string"
+            },
+            {
+              "id": "240ebcf2-db25-4d35-8977-43463b466e57",
+              "name": "message",
+              "value": "No se pudo acceder a la planilla comercial.",
+              "type": "string"
+            },
+            {
+              "id": "3bddb577-25b3-407f-852f-38c2553e0890",
+              "name": "data",
+              "value": "={{ { error_code: 'SHEETS_ERROR', detalle: String($json.error?.message ?? $json.error ?? 'Error desconocido') } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        60
+      ],
+      "id": "59f8a634-df79-4d7b-90dd-2a87b1e438e1",
+      "name": "Salida_Error_Sheets"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3fb36ab7-9b67-48e0-9d7a-2653d1f7d5df",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "984ccfd1-fc15-4aff-b0af-4956c22e7405",
+              "name": "worker",
+              "value": "registro_lead",
+              "type": "string"
+            },
+            {
+              "id": "2c9f6f34-9776-40d9-a552-7faf48b2a948",
+              "name": "message",
+              "value": "Faltan datos mínimos para registrar el lead.",
+              "type": "string"
+            },
+            {
+              "id": "e5f0478b-0017-4410-bdbc-d611394e86d1",
+              "name": "data",
+              "value": "={{ { error_code: 'DATOS_INSUFICIENTES', faltantes: [ !$json.nombre ? 'nombre' : null, (!$json.email && !$json.telefono) ? 'email o telefono' : null, !$json.destino ? 'destino' : null ].filter(Boolean) } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        440,
+        160
+      ],
+      "id": "63fa30b8-3c0f-49b0-ad0e-89b86c8e3070",
+      "name": "Salida_Error_Validacion"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Entrada_Worker_Registro": {
+      "main": [
+        [
+          {
+            "node": "Validar_Datos_Minimos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar_Datos_Minimos": {
+      "main": [
+        [
+          {
+            "node": "Calificar_Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salida_Error_Validacion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calificar_Lead": {
+      "main": [
+        [
+          {
+            "node": "Buscar_Duplicado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar_Duplicado": {
+      "main": [
+        [
+          {
+            "node": "Resultado_Busqueda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado_Busqueda": {
+      "main": [
+        [
+          {
+            "node": "Salida_Error_Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salida_Duplicado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar_Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar_Lead": {
+      "main": [
+        [
+          {
+            "node": "Salida_Exito",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salida_Error_Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 60,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": []
+}

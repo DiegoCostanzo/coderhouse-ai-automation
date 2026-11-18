@@ -1,0 +1,308 @@
+{
+  "name": "M2 - Worker_Escalamiento_Humano",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "intent"
+            },
+            {
+              "name": "confidence",
+              "type": "number"
+            },
+            {
+              "name": "riesgo"
+            },
+            {
+              "name": "motivo"
+            },
+            {
+              "name": "original_input"
+            },
+            {
+              "name": "nombre"
+            },
+            {
+              "name": "email"
+            },
+            {
+              "name": "telefono"
+            },
+            {
+              "name": "destino"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "423e00db-dff8-443e-8676-6f6dd9fee47e",
+      "name": "Entrada_Worker_Escalamiento"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sos el redactor interno de una agencia de viajes. Redactá el cuerpo de un correo breve (máximo 120 palabras) para un asesor comercial, avisándole que tiene que contactar a un cliente que el sistema automático derivó a revisión humana.\n\nIncluí: el motivo de la derivación, un resumen de lo que pidió el cliente y los datos de contacto disponibles. No inventes datos: si un dato falta, escribí \"no informado\". No des precios ni promesas. No incluyas asunto ni firma, solo el cuerpo.\nEscribí en español rioplatense, con tono profesional, y sin lenguaje inclusivo (no uses \"todos/as\", \"todes\", \"les\", \"x\" ni \"@\").\n\nDATOS DEL CASO\n- Motivo de la derivación: {{ $json.motivo }}\n- Intención detectada: {{ $json.intent }} (confianza {{ $json.confidence }}, riesgo {{ $json.riesgo }})\n- Mensaje original del cliente: {{ $json.original_input }}\n- Nombre: {{ $json.nombre || 'no informado' }}\n- Email: {{ $json.email || 'no informado' }}\n- Teléfono: {{ $json.telefono || 'no informado' }}\n- Destino de interés: {{ $json.destino || 'no informado' }}\n- Session ID del chat: {{ $json.session_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        240,
+        0
+      ],
+      "id": "cdcac78d-b189-45a7-9a0e-3d68bc8c70fb",
+      "name": "Redactar_Correo_Asesor",
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        220
+      ],
+      "id": "78eac70c-960e-485e-a11d-d1633bcb8d71",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XcK5D11RIVya94wj",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "asesor@ejemplo.com",
+        "subject": "=[Escalamiento · riesgo {{ $('Entrada_Worker_Escalamiento').item.json.riesgo }}] {{ $('Entrada_Worker_Escalamiento').item.json.nombre || 'Cliente sin nombre' }} – {{ $('Entrada_Worker_Escalamiento').item.json.intent }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}\n\n---\nSession ID: {{ $('Entrada_Worker_Escalamiento').item.json.session_id }}\nMensaje original: {{ $('Entrada_Worker_Escalamiento').item.json.original_input }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        -100
+      ],
+      "id": "f30b2515-befc-4e7c-9869-c4b20d50fffc",
+      "name": "Enviar_Alerta_Asesor",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6kQzwXEuBktSlZhT",
+          "name": "Gmail account"
+        }
+      },
+      "webhookId": "6fdd07ac-8883-4463-b34a-34bc694788ba",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "149d9688-108a-4e4c-9ecf-6f3090358215",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "7f969a36-a0d1-459d-95d8-62bfd1bda6cf",
+              "name": "worker",
+              "value": "escalamiento_humano",
+              "type": "string"
+            },
+            {
+              "id": "896e175e-cd84-45ba-bbcd-97898a2c588e",
+              "name": "message",
+              "value": "Caso derivado a un asesor por email.",
+              "type": "string"
+            },
+            {
+              "id": "4a67db99-989b-4a8d-b6a9-69c19fac62cc",
+              "name": "data",
+              "value": "={{ { accion: 'ESCALADO', canal: 'gmail', motivo: $('Entrada_Worker_Escalamiento').item.json.motivo, resumen_asesor: $('Redactar_Correo_Asesor').item.json.text } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        820,
+        -200
+      ],
+      "id": "12600117-8d2a-4c21-9a77-77665d851a1b",
+      "name": "Salida_Exito"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b502881d-b68e-4ba4-8ea4-1b090675f90e",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "bf81223b-4c0d-4935-aeb1-a8a8948d74cd",
+              "name": "worker",
+              "value": "escalamiento_humano",
+              "type": "string"
+            },
+            {
+              "id": "af3ac8a3-3c80-42e4-a12f-0e4d9b9e9636",
+              "name": "message",
+              "value": "No se pudo enviar la alerta al asesor.",
+              "type": "string"
+            },
+            {
+              "id": "33984750-9d16-43c4-a6d7-4742c8c3f28a",
+              "name": "data",
+              "value": "={{ { error_code: 'GMAIL_ERROR', detalle: String($json.error?.message ?? $json.error ?? 'Error desconocido') } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        820,
+        0
+      ],
+      "id": "256900e9-3ce7-407d-b99c-4c0f6417f96d",
+      "name": "Salida_Error_Gmail"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b3dff95c-c7bd-423b-89d0-68898767c085",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "f2c561c8-135b-4e9d-9504-1fff2d85bd7d",
+              "name": "worker",
+              "value": "escalamiento_humano",
+              "type": "string"
+            },
+            {
+              "id": "98833a84-8e71-4676-84ce-8a34b3407cb3",
+              "name": "message",
+              "value": "No se pudo redactar el correo para el asesor.",
+              "type": "string"
+            },
+            {
+              "id": "2fb3a2ad-458d-4095-ab3e-d8f72ea3202f",
+              "name": "data",
+              "value": "={{ { error_code: 'LLM_ERROR', detalle: String($json.error?.message ?? $json.error ?? 'Error desconocido') } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        160
+      ],
+      "id": "19fb3889-a962-4b02-a207-c7846b6c7454",
+      "name": "Salida_Error_LLM"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Entrada_Worker_Escalamiento": {
+      "main": [
+        [
+          {
+            "node": "Redactar_Correo_Asesor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Redactar_Correo_Asesor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactar_Correo_Asesor": {
+      "main": [
+        [
+          {
+            "node": "Enviar_Alerta_Asesor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salida_Error_LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar_Alerta_Asesor": {
+      "main": [
+        [
+          {
+            "node": "Salida_Exito",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salida_Error_Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 60,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": []
+}

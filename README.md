@@ -7,6 +7,7 @@ El proyecto crece módulo a módulo sobre el mismo workflow.
 | Módulo | Contenido | Carpeta |
 |---|---|---|
 | M1 | Agente base y motor de razonamiento | [`m1/`](m1/) |
+| M2 | Orquestación multi-agente (Manager-Worker con sub-workflows) | [`m2/`](m2/) |
 
 ---
 
