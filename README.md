@@ -4,10 +4,13 @@ Agente autónomo en **n8n** para una **agencia de viajes**: conversa con persona
 
 El proyecto crece módulo a módulo sobre el mismo workflow.
 
+**Repositorio público:** https://github.com/DiegoCostanzo/coderhouse-ai-automation
+
 | Módulo | Contenido | Carpeta |
 |---|---|---|
 | M1 | Agente base y motor de razonamiento | [`m1/`](m1/) |
 | M2 | Orquestación multi-agente (Manager-Worker con sub-workflows) | [`m2/`](m2/) |
+| M3 | Memoria persistente en Airtable por Session_ID y resumen agéntico | [`m3/`](m3/) |
 
 ---
 
