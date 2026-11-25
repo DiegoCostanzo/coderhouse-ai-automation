@@ -1,5 +1,7 @@
 # M4 · Checkpoint de Integraciones Avanzadas e Interconexión de Sistemas
 
+> **Pre-entrega 4 (Checkpoint 4)** · Módulo 4 del curso AI Automation (CoderHouse). Esta carpeta `m4/` contiene todo lo entregado: el workflow [`checkpoint4_diego_costanzo.json`](checkpoint4_diego_costanzo.json), este README y las capturas.
+
 Evolución del Manager de M3 (memoria + contexto): el agente ahora **recibe las consultas por email**, **sincroniza el contacto en un CRM real** y **avisa al equipo por Slack**. Las tres herramientas externas están conectadas por **OAuth2**.
 
 | Rol | Herramienta | Credencial n8n | Uso en el workflow |
